@@ -1,4 +1,4 @@
-""" MemoryPyne (The Game) """
+""" MemoryRX (The Game) """
 # Modules
 import reflex as rx
 import random
@@ -9,6 +9,8 @@ class State(rx.State):
     # get opacity states
     emoji_list: list[list] = [[i, "0%"] for i in range(36)]
     
+    moves: int = 0
+    misses: int = 0
     count: int = 0
     track: list = []
     score: int = 0
@@ -23,6 +25,7 @@ class State(rx.State):
 
         self.count += 1
         self.track.append((emoji_type, emoji))
+        self.moves += 1
         
     async def check_emoji(self):
         if self.count == 2:
@@ -32,6 +35,7 @@ class State(rx.State):
                     self.result = 'Congrats!! You WON!'
                 pass
             else:
+                self.misses += 1
                 indicies = [e[1][0] for e in self.track]
                 self.emoji_list = [
                     [i, "0%"] if i in indicies else [i, opacity]
@@ -46,9 +50,9 @@ class MemoryRX:
     def __init__(self):
         self.stage: int = 2
         self.emojis: list = [
-            "🔥", "🍎", "😡", "💀", 
-            "🤘", "💩", "😃", "😀",
-            "🎱", "⚽️", "🎾", "🏉"
+            # "🔥", "🍎", "😡", "💀",
+            "🤣", "😅", "😭", "🥺",
+            # "🎱", "⚽️", "🎾", "🏉"
         ]
         self.game_grid = rx.vstack(spacing="15px")
         self.create_board()
@@ -70,7 +74,7 @@ class MemoryRX:
                         rx.text(
                             # get the emoji from the list
                             emojis[count],
-                            font_size="32px",
+                            font_size="42px",
                             cursor="pointer",
                             transition="opacity 0.55s ease 0.35s",
                             # now we can set each opacity from the state class
@@ -83,10 +87,11 @@ class MemoryRX:
                                 State.check_emoji()
                             ]
                         ),
-                        width="58px",
-                        height="58px",
-                        bg="#331e19",
-                        border_radius="4px",
+                        width="75px",
+                        height="75px",
+                        bg="rgba(33, 79, 82, 0.6)",
+                        border="2px solid rgba(239, 232, 232)",
+                        border_radius="6px",
                         justify_content="center",
                         center_content=True,
                         cursor="pointer",
@@ -98,6 +103,36 @@ class MemoryRX:
 
         self.game_grid.children = items
         return self.game_grid
+    
+    def score_board(self):
+        return rx.hstack(
+            rx.text(f"Score: {State.score}"),
+            spacing="20px",
+            color="#eaecee",
+            font_size="30px",
+            font_weight="bold",
+            font_family="Agdasima",
+        )
+    
+    def move_board(self):
+        return rx.hstack(
+            rx.text(f"Moves: {State.moves}"),
+            spacing="20px",
+            color="#eaecee",
+            font_size="30px",
+            font_weight="bold",
+            font_family="Agdasima",
+        )
+    
+    def miss_board(self):
+        return rx.hstack(
+            rx.text(f"Misses: {State.misses}"),
+            spacing="20px",
+            color="#eaecee",
+            font_size="30px",
+            font_weight="bold",
+            font_family="Agdasima",
+        )
 
 def index() -> rx.Component:
     # Our Main UI Component
@@ -106,24 +141,58 @@ def index() -> rx.Component:
             # title
             rx.heading(
                 "MemoryRX",
-                font_size="65px",
+                font_size="105px",
+                font_family="Hammersmith One",
                 font_weight="extrabold",
-                color="#AEA6A4"
+                color="#eaecee"
             ),
+            rx.spacer(),
             rx.spacer(),
             # our game instance here...
             game.game_grid, 
             rx.spacer(),
+            rx.container(
+                rx.hstack(
+                    rx.box(
+                        game.score_board(),
+                        bg="rgba(33, 79, 82, 0.6)",
+                        border="2px solid rgba(239, 232, 232)",
+                        border_radius="5px",
+                        width="fit",
+                        margin="12px",
+                        padding="12px",
+                    ),
+                    rx.box(
+                        game.move_board(),
+                        bg="rgba(33, 79, 82, 0.6)",
+                        border="2px solid rgba(239, 232, 232)",
+                        border_radius="5px",
+                        width="fit",
+                        margin="12px",
+                        padding="12px",
+                    ),
+                    rx.box(
+                        game.miss_board(),
+                        bg="rgba(33, 79, 82, 0.6)",
+                        border="2px solid rgba(239, 232, 232)",
+                        border_radius="5px",
+                        width="fit",
+                        margin="12px",
+                        padding="12px",
+                    ),
+                ),
+            ),
             # result text
             rx.text.strong(
                 State.result,
-                font_size="25px",
-                color="#AEA6A4"
+                font_size="45px",
+                font_family="Agdasima",
+                color="#eaecee"
             ),
             spacing="25px",
             align="center"
         ),
-        bg="#140501",
+        bg="center/cover url('bg.jpg')",
         height="100vh",
         max_width="auto",
         # display="grid",
@@ -133,5 +202,9 @@ def index() -> rx.Component:
 
 game = MemoryRX()
 
-app = rx.App()
+app = rx.App(
+    stylesheets=[
+        "https://fonts.googleapis.com/css2?family=Agdasima&family=Hammersmith+One&display=swap"
+    ],
+)
 app.add_page(index)
