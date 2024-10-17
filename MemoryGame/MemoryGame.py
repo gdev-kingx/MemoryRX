@@ -15,27 +15,32 @@ class State(rx.State):
     track: list = []
     score: int = 0
     result: str
+    game_over: bool = False
 
     def reveal_emoji(self, emoji, emoji_type):
-        index = emoji[0]
-        self.emoji_list = [
-            [i, "100%"] if i == index else [i, opacity]
-            for i, opacity in self.emoji_list
-        ]
+        if not self.game_over:
+            index = emoji[0]
+            self.emoji_list = [
+                [i, "100%"] if i == index else [i, opacity]
+                for i, opacity in self.emoji_list
+            ]
+            self.count += 1
+            self.track.append((emoji_type, emoji))
+            self.moves += 1
+            return State.check_emoji
 
-        self.count += 1
-        self.track.append((emoji_type, emoji))
-        self.moves += 1
-        
     async def check_emoji(self):
         if self.count == 2:
             if self.track[0][0] == self.track[1][0]:
                 self.score += 1
                 if self.score == 8:
                     self.result = 'Congrats!! You WON!'
-                pass
+                    self.game_over = True
             else:
                 self.misses += 1
+                if self.misses == 8:
+                    self.result = 'Game Over! You LOSE!'
+                    self.game_over = True
                 indicies = [e[1][0] for e in self.track]
                 self.emoji_list = [
                     [i, "0%"] if i in indicies else [i, opacity]
@@ -44,7 +49,21 @@ class State(rx.State):
             self.count = 0
             self.track = []
         
-        await asyncio.sleep(2) 
+        await asyncio.sleep(2)
+
+    def restart_game(self):
+        self.reset()
+        return State.initialize_game
+
+    def initialize_game(self):
+        self.emoji_list = [[i, "0%"] for i in range(36)]
+        self.moves = 0
+        self.misses = 0
+        self.count = 0
+        self.track = []
+        self.score = 0
+        self.result = ""
+        self.game_over = False
 
 class MemoryRX:
     def __init__(self):
@@ -79,18 +98,12 @@ class MemoryRX:
                             transition="opacity 0.55s ease 0.35s",
                             # now we can set each opacity from the state class
                             opacity=State.emoji_list[count][1],
-                            on_click=lambda: [
-                                State.reveal_emoji(
-                                    State.emoji_list[count], 
-                                    emojis[count],
-                                ),
-                                State.check_emoji()
-                            ]
+                            on_click=State.reveal_emoji(State.emoji_list[count], emojis[count])
                         ),
                         width="75px",
                         height="75px",
-                        bg="rgba(33, 79, 82, 0.6)",
-                        border="2px solid rgba(239, 232, 232)",
+                        bg="rgba(48, 99, 131, 0.6)",
+                        border="2px solid rgba(220, 236, 246)",
                         border_radius="6px",
                         justify_content="center",
                         center_content=True,
@@ -108,7 +121,7 @@ class MemoryRX:
         return rx.hstack(
             rx.text(f"Score: {State.score}"),
             spacing="20px",
-            color="#eaecee",
+            color="rgba(220, 236, 246)",
             font_size="30px",
             font_weight="bold",
             font_family="Agdasima",
@@ -118,7 +131,7 @@ class MemoryRX:
         return rx.hstack(
             rx.text(f"Moves: {State.moves}"),
             spacing="20px",
-            color="#eaecee",
+            color="rgba(220, 236, 246)",
             font_size="30px",
             font_weight="bold",
             font_family="Agdasima",
@@ -128,7 +141,7 @@ class MemoryRX:
         return rx.hstack(
             rx.text(f"Misses: {State.misses}"),
             spacing="20px",
-            color="#eaecee",
+            color="rgba(220, 236, 246)",
             font_size="30px",
             font_weight="bold",
             font_family="Agdasima",
@@ -144,7 +157,7 @@ def index() -> rx.Component:
                 font_size="105px",
                 font_family="Hammersmith One",
                 font_weight="extrabold",
-                color="#eaecee"
+                color="rgba(220, 236, 246)"
             ),
             rx.spacer(),
             rx.spacer(),
@@ -155,8 +168,8 @@ def index() -> rx.Component:
                 rx.hstack(
                     rx.box(
                         game.score_board(),
-                        bg="rgba(33, 79, 82, 0.6)",
-                        border="2px solid rgba(239, 232, 232)",
+                        bg="rgba(48, 99, 131, 0.6)",
+                        border="2px dotted rgba(220, 236, 246)",
                         border_radius="5px",
                         width="fit",
                         margin="12px",
@@ -164,8 +177,8 @@ def index() -> rx.Component:
                     ),
                     rx.box(
                         game.move_board(),
-                        bg="rgba(33, 79, 82, 0.6)",
-                        border="2px solid rgba(239, 232, 232)",
+                        bg="rgba(48, 99, 131, 0.6)",
+                        border="2px dotted rgba(220, 236, 246)",
                         border_radius="5px",
                         width="fit",
                         margin="12px",
@@ -173,8 +186,8 @@ def index() -> rx.Component:
                     ),
                     rx.box(
                         game.miss_board(),
-                        bg="rgba(33, 79, 82, 0.6)",
-                        border="2px solid rgba(239, 232, 232)",
+                        bg="rgba(48, 99, 131, 0.6)",
+                        border="2px dotted rgba(220, 236, 246)",
                         border_radius="5px",
                         width="fit",
                         margin="12px",
@@ -182,20 +195,33 @@ def index() -> rx.Component:
                     ),
                 ),
             ),
+            rx.button(
+                "Restart Game",
+                on_click=State.restart_game,
+                is_disabled=~State.game_over,
+                bg="rgba(48, 99, 131, 0.6)",
+                border="2px solid rgba(220, 236, 246)",
+                color="rgba(220, 236, 246)",
+                size="4",
+                font_size="30px",
+                font_weight="bold",
+                font_family="Agdasima",
+                radius="medium",
+                cursor="pointer",
+            ),
             # result text
             rx.text.strong(
                 State.result,
                 font_size="45px",
                 font_family="Agdasima",
-                color="#eaecee"
+                color="rgba(220, 236, 246)"
             ),
             spacing="25px",
             align="center"
         ),
-        bg="center/cover url('bg.jpg')",
+        background = "linear-gradient(180deg, #07283B 0%, 14.407502131287297%, #63ACBF 54.390451832907075%, 79.96589940323956%, #020E1A 100%)",    
         height="100vh",
         max_width="auto",
-        # display="grid",
         position="relative",
         overlay="hidden",
     )
@@ -204,7 +230,7 @@ game = MemoryRX()
 
 app = rx.App(
     stylesheets=[
-        "https://fonts.googleapis.com/css2?family=Agdasima&family=Hammersmith+One&display=swap"
+        "https://fonts.googleapis.com/css2?family=Agdasima&family=Hammersmith+One&display=swap",
     ],
 )
 app.add_page(index)
